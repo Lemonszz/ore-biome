@@ -3,6 +3,7 @@ package party.lemons.orebiome;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Biomes;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -12,6 +13,7 @@ import net.minecraft.world.biome.BiomeProvider;
 import net.minecraftforge.common.BiomeManager;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.event.terraingen.OreGenEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
@@ -43,6 +45,12 @@ public class OBMod
 		BiomeManager.addBiome(BiomeManager.BiomeType.WARM, new BiomeManager.BiomeEntry(oreBiome, Cfg.biome_weight));
 	}
 
+	@SubscribeEvent
+	public static void onGenerateOre(OreGenEvent event)
+	{
+		if(Cfg.stop_vanilla_ore_generation)
+			event.setCanceled(true);
+	}
 
 	public static void replaceAt(BlockPos p, World world)
 	{
@@ -60,10 +68,35 @@ public class OBMod
 		if(oreStates.containsKey(name))
 			return oreStates.get(name);
 
-		Block bl = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(name));
-		oreStates.put(name, bl.getDefaultState());
+		String[] split = name.split(":");
+		int meta = 0;
+		if(split.length > 2)
+			try
+			{
+				meta = Integer.valueOf(split[2]);
+			}
+			catch(NumberFormatException e)
+			{
+				System.out.println("YOU HAVE AN INVALID ORE IN YOUR ORE BIOME CONFIG. THIS IS AN ISSUE!!");
+				System.out.println("YOU HAVE AN INVALID ORE IN YOUR ORE BIOME CONFIG. THIS IS AN ISSUE!!");
+				System.out.println("YOU HAVE AN INVALID ORE IN YOUR ORE BIOME CONFIG. THIS IS AN ISSUE!!");
+				e.printStackTrace();
+				System.out.println("YOU HAVE AN INVALID ORE IN YOUR ORE BIOME CONFIG. THIS IS AN ISSUE!!");
+				System.out.println("YOU HAVE AN INVALID ORE IN YOUR ORE BIOME CONFIG. THIS IS AN ISSUE!!");
+				System.out.println("YOU HAVE AN INVALID ORE IN YOUR ORE BIOME CONFIG. THIS IS AN ISSUE!!");
+			}
 
-		return bl.getDefaultState();
+		Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(split[0], split[1]));
+		if(block == null || block == Blocks.AIR)
+		{
+			System.out.println("Ore Biome - no ore found for " + name + ", replacing with stone");
+			oreStates.put(name, Blocks.STONE.getDefaultState());
+			return block.getDefaultState();
+		}
+
+		IBlockState state = block.getStateFromMeta(meta);
+		oreStates.put(name, state);
+		return state;
 	}
 
 	private static Map<String, IBlockState> oreStates = new HashMap<>();
@@ -73,6 +106,7 @@ public class OBMod
 	{
 		public static int biome_weight = 10;
 		public static float replace_chance = 0.75F;
+		public static boolean stop_vanilla_ore_generation = false;
 
 		public static String[] ores = {
 				"minecraft:iron_ore",
